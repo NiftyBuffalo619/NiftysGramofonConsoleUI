@@ -8,7 +8,7 @@ from rich.syntax import Syntax
 from textual.app import App, ComposeResult
 from textual.command import Hit, Hits, Provider
 from textual.containers import VerticalScroll
-from textual.widgets import Static, Footer, Header
+from textual.widgets import Static, Footer, Header, Input
 
 
 class PlaySong(Provider):
@@ -57,7 +57,7 @@ class NiftyhoGramofonUI(App):
     def action_change_theme(self):
         self.dark = not self.dark
     def playsong(self) -> None:
-        """"""
+        yield Input(placeholder="Type a song you want to play")
 
 if __name__ == "__main__":
     app = NiftyhoGramofonUI()
