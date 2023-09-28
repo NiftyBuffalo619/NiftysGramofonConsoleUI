@@ -1,5 +1,9 @@
 #now_playing {
     padding: 2;
+    border: solid white;
+}
+#NowPlayingTitle {
+    padding: 2;
 }
 QuitScreen {
     align: center middle;

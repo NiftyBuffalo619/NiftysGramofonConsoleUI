@@ -4,12 +4,18 @@ from functools import partial
 from pathlib import Path
 
 from rich.syntax import Syntax
+from rich.text import Text
 
 from textual.app import App, ComposeResult
 from textual.command import Hit, Hits, Provider
 from textual.containers import VerticalScroll, Grid
 from textual.widgets import Static, Footer, Header, Input, Label, Button
 from textual.screen import Screen, ModalScreen
+from textual.worker import Worker, get_current_worker
+from textual import work
+from urllib.request import Request , urlopen, HTTPError
+import base64
+import json
 
 class QuitScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
@@ -55,6 +61,20 @@ class Playsound(Provider):
                 partial(app.do_something),
                 help="Plays a test sound",
             )
+class RefreshMusic(Provider):
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        app = self.app
+        assert isinstance(app, NiftyhoGramofonUI)
+        command = f"refresh"
+        score = matcher.match(command)
+        if score > 0:
+            yield Hit(
+                score,
+                matcher.highlight(command),
+                partial(app.update_music),
+                help="Refreshes a song"
+            )
 
 # SCREENS
 class MainScreen(Screen):
@@ -81,7 +101,7 @@ class NiftyhoGramofonUI(App):
         ("d", "change_theme", "Change Theme"),
         ("q", "quit", "Quit"),
     ]
-    COMMANDS = App.COMMANDS | {Playsound} | {PlaySong}
+    COMMANDS = App.COMMANDS | {Playsound} | {PlaySong} | {RefreshMusic}
     MODES = {
         "main": MainScreen,
         "songmenu": SongSearchScreen,
@@ -90,6 +110,8 @@ class NiftyhoGramofonUI(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Footer()
+        yield Static("[underline]Now Playing[/underline]", id="NowPlayingTitle")
+        yield Static("🎵 Something is playing", id="now_playing")
         with VerticalScroll():
             yield Static(id="code", expand=True)
     def do_something(self) -> None:
@@ -105,6 +127,27 @@ class NiftyhoGramofonUI(App):
                 self.exit()
         
         self.push_screen(QuitScreen(), check_quit)
+    @work(exclusive=True, thread=True)
+    def update_music(self):
+        #try:
+        music_widget = self.query_one("#now_playing")
+        worker = get_current_worker()
+        url = "http://localhost/api/song"
+        credentials = ""
+        credentials_bytes = credentials.encode("utf-8")
+        base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
+        headers = {
+            "Authorization": f"Basic {base64_credentials}"
+        }
+        request = Request(url, headers=headers)
+        response_text = urlopen(request).read().decode("utf-8")
+        music = Text.from_ansi(response_text)
+        if not worker.is_cancelled:
+            music_object = json.loads(response_text)
+            name = music_object["name"]
+            self.call_from_thread(music_widget.update, f"{name}")
+        #except HTTPError:
+        #self.bell()
 
 if __name__ == "__main__":
     app = NiftyhoGramofonUI()
