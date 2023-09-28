@@ -16,6 +16,8 @@ from textual import work
 from urllib.request import Request , urlopen, HTTPError
 import base64
 import json
+from config import Config
+import os
 
 class QuitScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
@@ -110,6 +112,8 @@ class NiftyhoGramofonUI(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Footer()
+        self.channelJoined = Static("🟢Operational", id="status")
+        yield self.channelJoined
         self.widget = Static("🎵 Something is playing", id="now_playing")
         yield self.widget
         with VerticalScroll():
@@ -131,11 +135,12 @@ class NiftyhoGramofonUI(App):
         self.widget.border_title = "Now Playing"
     @work(exclusive=True, thread=True)
     def update_music(self):
+        config = Config(os.path.abspath("config.json"))
         #try:
         music_widget = self.query_one("#now_playing")
         worker = get_current_worker()
         url = "http://localhost/api/song"
-        credentials = ""
+        credentials = f"{config.username}:{config.password}"
         credentials_bytes = credentials.encode("utf-8")
         base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
         headers = {
@@ -145,6 +150,8 @@ class NiftyhoGramofonUI(App):
         response_text = urlopen(request).read().decode("utf-8")
         music = Text.from_ansi(response_text)
         if not worker.is_cancelled:
+            if not response_text:
+                self.call_from_thread(music_widget, "Nothing is being played right now")
             music_object = json.loads(response_text)
             name = music_object["name"]
             description = music_object["description"]

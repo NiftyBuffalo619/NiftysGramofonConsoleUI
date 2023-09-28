@@ -29,3 +29,7 @@ QuitScreen {
 Button {
     width: 100%;
 }
+#status {
+    padding: 1;
+    # padding: 0 0 1 0;  Top Right Bottom Left
+}
