@@ -110,8 +110,8 @@ class NiftyhoGramofonUI(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Footer()
-        yield Static("[underline]Now Playing[/underline]", id="NowPlayingTitle")
-        yield Static("🎵 Something is playing", id="now_playing")
+        self.widget = Static("🎵 Something is playing", id="now_playing")
+        yield self.widget
         with VerticalScroll():
             yield Static(id="code", expand=True)
     def do_something(self) -> None:
@@ -127,6 +127,8 @@ class NiftyhoGramofonUI(App):
                 self.exit()
         
         self.push_screen(QuitScreen(), check_quit)
+    def on_mount(self) -> None:
+        self.widget.border_title = "Now Playing"
     @work(exclusive=True, thread=True)
     def update_music(self):
         #try:
@@ -145,7 +147,8 @@ class NiftyhoGramofonUI(App):
         if not worker.is_cancelled:
             music_object = json.loads(response_text)
             name = music_object["name"]
-            self.call_from_thread(music_widget.update, f"{name}")
+            description = music_object["description"]
+            self.call_from_thread(music_widget.update, f"🎵{name} \n📝[bold]Description[/bold]: {description}")
         #except HTTPError:
         #self.bell()
 
