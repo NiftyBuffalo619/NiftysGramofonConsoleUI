@@ -14,6 +14,7 @@ from textual.screen import Screen, ModalScreen
 from textual.worker import Worker, get_current_worker
 from textual import work
 from urllib.request import Request , urlopen, HTTPError
+from urllib.error import URLError
 import base64
 import json
 from config import Config
@@ -110,6 +111,7 @@ class NiftyhoGramofonUI(App):
     }
     CSS_PATH = "style.tcss"
     def compose(self) -> ComposeResult:
+        self.notify("The credentials aren't encrypted", title="Warning", severity="warning", timeout=6.9)
         yield Header()
         yield Footer()
         self.channelJoined = Static("🟢Operational", id="status")
@@ -136,28 +138,36 @@ class NiftyhoGramofonUI(App):
     @work(exclusive=True, thread=True)
     def update_music(self):
         config = Config(os.path.abspath("config.json"))
-        #try:
-        music_widget = self.query_one("#now_playing")
-        worker = get_current_worker()
-        url = "http://localhost/api/song"
-        credentials = f"{config.username}:{config.password}"
-        credentials_bytes = credentials.encode("utf-8")
-        base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
-        headers = {
-            "Authorization": f"Basic {base64_credentials}"
-        }
-        request = Request(url, headers=headers)
-        response_text = urlopen(request).read().decode("utf-8")
-        music = Text.from_ansi(response_text)
-        if not worker.is_cancelled:
-            if not response_text:
-                self.call_from_thread(music_widget, "Nothing is being played right now")
-            music_object = json.loads(response_text)
-            name = music_object["name"]
-            description = music_object["description"]
-            self.call_from_thread(music_widget.update, f"🎵{name} \n📝[bold]Description[/bold]: {description}")
-        #except HTTPError:
-        #self.bell()
+        try:
+            music_widget = self.query_one("#now_playing")
+            worker = get_current_worker()
+            url = "http://localhost/api/song"
+            credentials = f"{config.username}:{config.password}"
+            credentials_bytes = credentials.encode("utf-8")
+            base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
+            headers = {
+                "Authorization": f"Basic {base64_credentials}"
+            }
+            request = Request(url, headers=headers)
+            response_text = urlopen(request).read().decode("utf-8")
+            music = Text.from_ansi(response_text)
+            if not worker.is_cancelled:
+                if not response_text:
+                    self.call_from_thread(music_widget, "Nothing is being played right now")
+                music_object = json.loads(response_text)
+                name = music_object["name"]
+                description = music_object["description"]
+                self.call_from_thread(music_widget.update, f"🎵{name} \n📝[bold]Description[/bold]: {description}")
+                self.notify("The music has been successfully refreshed",title="Information", severity="information", timeout=5.0)
+        except HTTPError as error:
+            self.notify("HTTP Status Code " + str(error.reason), title="[bold]Error[/bold]", severity="error", timeout=10.0)
+            self.bell()
+        except URLError as error:
+            self.notify("An error has occured while updating the music " + str(error.reason), title="Error", severity="error", timeout=10.0)
+            self.bell()
+        except:
+            self.notify("An error has occured while updating the music", title="Error", severity="error", timeout=10.0)
+            self.bell()
 
 if __name__ == "__main__":
     app = NiftyhoGramofonUI()
