@@ -19,6 +19,7 @@ import base64
 import json
 from config import Config
 import os
+from credentials import credentials
 
 class QuitScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
@@ -116,7 +117,7 @@ class NiftyhoGramofonUI(App):
         yield Footer()
         self.channelJoined = Static("🟢Operational", id="status")
         yield self.channelJoined
-        self.widget = Static("🎵 Something is playing", id="now_playing")
+        self.widget = Static("Refreshing...", id="now_playing")
         yield self.widget
         with VerticalScroll():
             yield Static(id="code", expand=True)
@@ -135,6 +136,7 @@ class NiftyhoGramofonUI(App):
         self.push_screen(QuitScreen(), check_quit)
     def on_mount(self) -> None:
         self.widget.border_title = "Now Playing"
+        self.update_music()
     @work(exclusive=True, thread=True)
     def update_music(self):
         config = Config(os.path.abspath("config.json"))
@@ -165,9 +167,35 @@ class NiftyhoGramofonUI(App):
         except URLError as error:
             self.notify("An error has occured while updating the music " + str(error.reason), title="Error", severity="error", timeout=10.0)
             self.bell()
-        except:
-            self.notify("An error has occured while updating the music", title="Error", severity="error", timeout=10.0)
+        except Exception as error:
+            self.notify("An error has occured while updating the music " + str(error.args), title="Error", severity="error", timeout=10.0)
             self.bell()
+    @work(exclusive=True, thread=True)
+    def update_status(self):
+        try:
+            status_widget = self.query_one("#status")
+            worker = get_current_worker()
+            url = "http://localhost/status"
+            config = Config(os.path.abspath("config.json"))
+            credentials = f"{config.username}:{config.password}"
+            credentials_bytes = credentials.encode("utf-8")
+            base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
+            headers = {
+                "Authorization" : f"Basic {base64_credentials}"
+            }
+            request = Request(url, headers=headers)
+            response_text = urlopen(request).read().decode("utf-8")
+            response = Text.from_ansi(response_text)
+            if not worker.is_cancelled:
+                if not response_text:
+                    self.call_from_thread(status_widget, "")
+                music_object = json.loads(response_text)
+                name = music_object["name"]
+                description = music_object["description"]
+                self.call_from_thread(status_widget, f"")
+                self.notify("Successfully refreshed status",title="Information", severity="information", timeout=5.0)
+        except HTTPError as error:
+            self.notify("HTTP Status Code " + str(error.reason), title="[bold]Error[/bold]", severity="error", timeout=10.0)
 
 if __name__ == "__main__":
     app = NiftyhoGramofonUI()
