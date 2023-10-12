@@ -9,10 +9,11 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.command import Hit, Hits, Provider
 from textual.containers import VerticalScroll, Grid
-from textual.widgets import Static, Footer, Header, Input, Label, Button
+from textual.widgets import Static, Footer, Header, Input, Label, Button, LoadingIndicator
 from textual.screen import Screen, ModalScreen
 from textual.worker import Worker, get_current_worker
 from textual import work
+import requests
 from urllib.request import Request , urlopen, HTTPError
 from urllib.error import URLError
 import base64
@@ -20,6 +21,7 @@ import json
 from config import Config
 import os
 from credentials import credentials
+from textual.timer import Timer
 
 class QuitScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
@@ -48,7 +50,7 @@ class PlaySong(Provider):
                 score,
                 matcher.highlight(command),
                 partial(app.playsong),
-                help="Plays a song by the id provided",
+                help=f"Plays a song by the id provided",
             )
 class Playsound(Provider):
     async def search(self, query: str) -> Hits:  
@@ -104,6 +106,9 @@ class NiftyhoGramofonUI(App):
     BINDINGS = [
         ("d", "change_theme", "Change Theme"),
         ("q", "quit", "Quit"),
+        ("s", "stop_audio", "Stop Audio"),
+        ("r", "pause_audio", "Pause Audio"),
+        ("t", "unpause_audio", "Unpause Audio"),
     ]
     COMMANDS = App.COMMANDS | {Playsound} | {PlaySong} | {RefreshMusic}
     MODES = {
@@ -117,7 +122,7 @@ class NiftyhoGramofonUI(App):
         yield Footer()
         self.channelJoined = Static("🟢Operational", id="status")
         yield self.channelJoined
-        self.widget = Static("Refreshing...", id="now_playing")
+        self.widget = Static("Refreshing", id="now_playing")
         yield self.widget
         with VerticalScroll():
             yield Static(id="code", expand=True)
@@ -125,6 +130,74 @@ class NiftyhoGramofonUI(App):
         self.bell()
     def action_change_theme(self):
         self.dark = not self.dark
+    
+    def action_stop_audio(self):
+        config = Config(os.path.abspath("config.json"))
+        try:
+            url = "http://localhost/api/stopaudio"
+            credentials = f"{config.username}:{config.password}"
+            credentials_bytes = credentials.encode("utf-8")
+            base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
+            headers = {
+                "Authorization": f"Basic {base64_credentials}"
+            }
+            request = requests.post(url, headers=headers)
+            self.notify("Successfully stopped",title="Information", severity="information", timeout=5.0)
+            self.update_music()
+        except HTTPError as error:
+            self.notify("HTTP Status Code " + str(error.reason), title="Error", severity="error", timeout=10.0)
+            self.bell()
+        except URLError as error:
+            self.notify("An error has occured while stopping the music " + str(error.reason), title="Error", severity="error", timeout=10.0)
+            self.bell()
+        except Exception as error:
+            self.notify("An error has occured while stopping the music " + str(error.args), title="Error", severity="error", timeout=10.0)
+            self.bell()
+    
+    def action_pause_audio(self):
+        config = Config(os.path.abspath("config.json"))
+        try:
+            url = "http://localhost/api/pause"
+            credentials = f"{config.username}:{config.password}"
+            credentials_bytes = credentials.encode("utf-8")
+            base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
+            headers = {
+                "Authorization": f"Basic {base64_credentials}"
+            }
+            request = requests.post(url, headers=headers)
+            self.notify("Successfully stopped",title="Information", severity="information", timeout=5.0)
+            self.update_music()
+        except HTTPError as error:
+            self.notify("HTTP Status Code " + str(error.reason), title="Error", severity="error", timeout=10.0)
+            self.bell()
+        except URLError as error:
+            self.notify("An error has occured while stopping the music " + str(error.reason), title="Error", severity="error", timeout=10.0)
+            self.bell()
+        except Exception as error:
+            self.notify("An error has occured while stopping the music " + str(error.args), title="Error", severity="error", timeout=10.0)
+            self.bell()
+    def action_unpause_audio(self):
+        config = Config(os.path.abspath("config.json"))
+        try:
+            url = "http://localhost/api/unpause"
+            credentials = f"{config.username}:{config.password}"
+            credentials_bytes = credentials.encode("utf-8")
+            base64_credentials = base64.b64encode(credentials_bytes).decode("utf-8")
+            headers = {
+                "Authorization": f"Basic {base64_credentials}"
+            }
+            request = requests.post(url, headers=headers)
+            self.notify("Successfully stopped",title="Information", severity="information", timeout=5.0)
+            self.update_music()
+        except HTTPError as error:
+            self.notify("HTTP Status Code " + str(error.reason), title="Error", severity="error", timeout=10.0)
+            self.bell()
+        except URLError as error:
+            self.notify("An error has occured while stopping the music " + str(error.reason), title="Error", severity="error", timeout=10.0)
+            self.bell()
+        except Exception as error:
+            self.notify("An error has occured while stopping the music " + str(error.args), title="Error", severity="error", timeout=10.0)
+            self.bell()
     def playsong(self) -> None:
         self.switch_mode("songmenu")
     
@@ -137,6 +210,8 @@ class NiftyhoGramofonUI(App):
     def on_mount(self) -> None:
         self.widget.border_title = "Now Playing"
         self.update_music()
+        timer = Timer(self.update_music,interval=5.0, repeat=None)
+        
     @work(exclusive=True, thread=True)
     def update_music(self):
         config = Config(os.path.abspath("config.json"))
@@ -192,7 +267,7 @@ class NiftyhoGramofonUI(App):
                 music_object = json.loads(response_text)
                 name = music_object["name"]
                 description = music_object["description"]
-                self.call_from_thread(status_widget, f"")
+                self.call_from_thread(status_widget, f"Operational")
                 self.notify("Successfully refreshed status",title="Information", severity="information", timeout=5.0)
         except HTTPError as error:
             self.notify("HTTP Status Code " + str(error.reason), title="[bold]Error[/bold]", severity="error", timeout=10.0)
