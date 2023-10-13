@@ -22,6 +22,7 @@ from config import Config
 import os
 from credentials import credentials
 from textual.timer import Timer
+from textual import on
 
 class QuitScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
@@ -115,7 +116,7 @@ class NiftyhoGramofonUI(App):
         "main": MainScreen,
         "songmenu": SongSearchScreen,
     }
-    CSS_PATH = "style.tcss"
+    CSS_PATH = "main.css"
     def compose(self) -> ComposeResult:
         self.notify("The credentials aren't encrypted", title="Warning", severity="warning", timeout=6.9)
         yield Header()
@@ -126,6 +127,7 @@ class NiftyhoGramofonUI(App):
         yield self.widget
         with VerticalScroll():
             yield Static(id="code", expand=True)
+        yield Button("Pause", variant="primary", id="pause")
     def do_something(self) -> None:
         self.bell()
     def action_change_theme(self):
@@ -142,7 +144,7 @@ class NiftyhoGramofonUI(App):
                 "Authorization": f"Basic {base64_credentials}"
             }
             request = requests.post(url, headers=headers)
-            self.notify("Successfully stopped",title="Information", severity="information", timeout=5.0)
+            self.notify("Successfully stopped",title="Information", severity="information", timeout=3.0)
             self.update_music()
         except HTTPError as error:
             self.notify("HTTP Status Code " + str(error.reason), title="Error", severity="error", timeout=10.0)
@@ -165,7 +167,7 @@ class NiftyhoGramofonUI(App):
                 "Authorization": f"Basic {base64_credentials}"
             }
             request = requests.post(url, headers=headers)
-            self.notify("Successfully stopped",title="Information", severity="information", timeout=5.0)
+            self.notify("Successfully paused",title="Information", severity="information", timeout=3.0)
             self.update_music()
         except HTTPError as error:
             self.notify("HTTP Status Code " + str(error.reason), title="Error", severity="error", timeout=10.0)
@@ -187,7 +189,7 @@ class NiftyhoGramofonUI(App):
                 "Authorization": f"Basic {base64_credentials}"
             }
             request = requests.post(url, headers=headers)
-            self.notify("Successfully stopped",title="Information", severity="information", timeout=5.0)
+            self.notify("Successfully unpaused",title="Information", severity="information", timeout=3.0)
             self.update_music()
         except HTTPError as error:
             self.notify("HTTP Status Code " + str(error.reason), title="Error", severity="error", timeout=10.0)
@@ -235,7 +237,7 @@ class NiftyhoGramofonUI(App):
                 name = music_object["name"]
                 description = music_object["description"]
                 self.call_from_thread(music_widget.update, f"🎵{name} \n📝[bold]Description[/bold]: {description}")
-                self.notify("The music has been successfully refreshed",title="Information", severity="information", timeout=5.0)
+                self.notify("The music has been successfully refreshed",title="Information", severity="information", timeout=3.0)
         except HTTPError as error:
             self.notify("HTTP Status Code " + str(error.reason), title="[bold]Error[/bold]", severity="error", timeout=10.0)
             self.bell()
