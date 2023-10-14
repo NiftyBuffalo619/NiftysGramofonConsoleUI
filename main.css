@@ -19,3 +19,7 @@
 #pause {
    align: center bottom;
 }
+
+.paused #pause {
+    
+}

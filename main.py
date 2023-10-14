@@ -117,6 +117,22 @@ class NiftyhoGramofonUI(App):
         "songmenu": SongSearchScreen,
     }
     CSS_PATH = "main.css"
+    paused = False
+    @on(Button.Pressed, "#pause")
+    def on_button_pressed(self, event: Button.Pressed):
+        self.add_class("paused")
+        if event.button.id == "pause":
+            if self.paused == False:
+                self.action_pause_audio()
+                event.button.variant = "error"
+                #event.button.border_title = "Unpause"
+                event.button.label = "Unpause"
+                self.paused = True
+            else:
+                self.action_unpause_audio()
+                event.button.variant = "primary"
+                event.button.label = "Pause"
+                self.paused = False
     def compose(self) -> ComposeResult:
         self.notify("The credentials aren't encrypted", title="Warning", severity="warning", timeout=6.9)
         yield Header()
