@@ -118,7 +118,7 @@ class NiftyhoGramofonUI(App):
     }
     CSS_PATH = "main.css"
     paused = False
-    @on(Button.Pressed, "#pause")
+    @on(Button.Pressed, "#pause, #stop")
     def on_button_pressed(self, event: Button.Pressed):
         self.add_class("paused")
         if event.button.id == "pause":
@@ -133,6 +133,8 @@ class NiftyhoGramofonUI(App):
                 event.button.variant = "primary"
                 event.button.label = "Pause"
                 self.paused = False
+        elif event.button.id == "stop":
+            self.action_stop_audio()
     def compose(self) -> ComposeResult:
         self.notify("The credentials aren't encrypted", title="Warning", severity="warning", timeout=6.9)
         yield Header()
@@ -144,6 +146,7 @@ class NiftyhoGramofonUI(App):
         with VerticalScroll():
             yield Static(id="code", expand=True)
         yield Button("Pause", variant="primary", id="pause")
+        yield Button("Stop", variant="error", id="stop")
     def do_something(self) -> None:
         self.bell()
     def action_change_theme(self):
@@ -228,10 +231,11 @@ class NiftyhoGramofonUI(App):
     def on_mount(self) -> None:
         self.widget.border_title = "Now Playing"
         self.update_music()
-        timer = Timer(self.update_music,interval=5.0, repeat=None)
-        
+        timer = Timer(self.update_music,interval=5.0, repeat=None)   
     @work(exclusive=True, thread=True)
     def update_music(self):
+        pause_button = self.query_one("#pause") 
+        stop_button = self.query_one("#stop")
         config = Config(os.path.abspath("config.json"))
         try:
             music_widget = self.query_one("#now_playing")
@@ -254,13 +258,21 @@ class NiftyhoGramofonUI(App):
                 description = music_object["description"]
                 self.call_from_thread(music_widget.update, f"🎵{name} \n📝[bold]Description[/bold]: {description}")
                 self.notify("The music has been successfully refreshed",title="Information", severity="information", timeout=3.0)
+                pause_button.disabled = False
+                stop_button.disabled = False
         except HTTPError as error:
+            pause_button.disabled = True
+            stop_button.disabled = True
             self.notify("HTTP Status Code " + str(error.reason), title="[bold]Error[/bold]", severity="error", timeout=10.0)
             self.bell()
         except URLError as error:
+            pause_button.disabled = True
+            stop_button.disabled = True
             self.notify("An error has occured while updating the music " + str(error.reason), title="Error", severity="error", timeout=10.0)
             self.bell()
         except Exception as error:
+            pause_button.disabled = True
+            stop_button.disabled = True
             self.notify("An error has occured while updating the music " + str(error.args), title="Error", severity="error", timeout=10.0)
             self.bell()
     @work(exclusive=True, thread=True)
@@ -289,7 +301,8 @@ class NiftyhoGramofonUI(App):
                 self.notify("Successfully refreshed status",title="Information", severity="information", timeout=5.0)
         except HTTPError as error:
             self.notify("HTTP Status Code " + str(error.reason), title="[bold]Error[/bold]", severity="error", timeout=10.0)
-
+        except Exception as error:
+            self.notify("An error has occured while updating the music " + str(error.args), title="Error", severity="error", timeout=10.0)
 if __name__ == "__main__":
     app = NiftyhoGramofonUI()
     app.run()
