@@ -101,14 +101,32 @@ class SongSearchScreen(Screen):
         yield Footer()
     def action_change_theme(self):
         self.dark = not self.dark
-
+class PlayScreen(Screen):
+    def compose(self) -> ComposeResult:
+        yield Grid(
+            Label("Play Menu", id="question"),
+            Input(placeholder="What do you want to play?", id="answer"),
+            Button("Cancel",variant="error", id="cancel"),
+            Button("Play Song",variant="primary", id="playbutton"),
+            id="playdialog"
+        )
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel":
+            self.app.pop_screen()
+        elif event.button.id == "playbutton":
+            self.app.pop_screen()
+class ControlsWidget(Static):
+    def compose(self):
+        yield Button("Pause", variant="primary", id="pause")
+        yield Button("Stop", variant="error", id="stop")
 # MAIN APP
 class NiftyhoGramofonUI(App):
     BINDINGS = [
         ("d", "change_theme", "Change Theme"),
+        ("e", "play_popscreen", "Play"),
         ("q", "quit", "Quit"),
-        ("s", "stop_audio", "Stop Audio"),
         ("r", "pause_audio", "Pause Audio"),
+        ("s", "stop_audio", "Stop Audio"),
         ("t", "unpause_audio", "Unpause Audio"),
     ]
     COMMANDS = App.COMMANDS | {Playsound} | {PlaySong} | {RefreshMusic}
@@ -145,13 +163,13 @@ class NiftyhoGramofonUI(App):
         yield self.widget
         with VerticalScroll():
             yield Static(id="code", expand=True)
-        yield Button("Pause", variant="primary", id="pause")
-        yield Button("Stop", variant="error", id="stop")
+        yield ControlsWidget()
     def do_something(self) -> None:
         self.bell()
     def action_change_theme(self):
         self.dark = not self.dark
-    
+    def action_play_popscreen(self) -> None:
+        self.push_screen(PlayScreen())
     def action_stop_audio(self):
         config = Config(os.path.abspath("config.json"))
         try:
