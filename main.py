@@ -9,7 +9,7 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.command import Hit, Hits, Provider
 from textual.containers import VerticalScroll, Grid
-from textual.widgets import Static, Footer, Header, Input, Label, Button, LoadingIndicator
+from textual.widgets import Static, Footer, Header, Input, Label, Button, LoadingIndicator, Select
 from textual.screen import Screen, ModalScreen
 from textual.worker import Worker, get_current_worker
 from textual import work
@@ -102,14 +102,23 @@ class SongSearchScreen(Screen):
     def action_change_theme(self):
         self.dark = not self.dark
 class PlayScreen(Screen):
+    LINES = """💎vip-herna
+    channel
+    """.splitlines()
+    SELECTED_CHANNEL = ""
     def compose(self) -> ComposeResult:
         yield Grid(
             Label("Play Menu", id="question"),
             Input(placeholder="What do you want to play?", id="answer"),
+            Select((line, line) for line in self.LINES),
             Button("Cancel",variant="error", id="cancel"),
             Button("Play Song",variant="primary", id="playbutton"),
             id="playdialog"
         )
+    @on(Select.Changed)
+    def select_changed(self, event: Select.Changed) -> None:
+        if str(event.value) == "💎vip-herna":
+            self.SELECTED_CHANNEL = "VIP HERNA"
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "cancel":
             self.app.pop_screen()
