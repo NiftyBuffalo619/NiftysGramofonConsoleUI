@@ -101,6 +101,16 @@ class SongSearchScreen(Screen):
         yield Footer()
     def action_change_theme(self):
         self.dark = not self.dark
+class SettingsScreen(Screen):
+    def compose(self) -> ComposeResult:
+        yield Grid(
+            Label("Settings", id="question"),
+            Button("Exit Settings", variant="error", id="exit"),
+            id="playdialog"
+        )
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "exit":
+            self.app.pop_screen()
 class PlayScreen(Screen):
     LINES = """💎vip-herna
     channel
@@ -123,7 +133,10 @@ class PlayScreen(Screen):
         if event.button.id == "cancel":
             self.app.pop_screen()
         elif event.button.id == "playbutton":
-            self.app.pop_screen()
+            if self.SELECTED_CHANNEL == "":
+                self.notify(title="Error", severity="error", message="Please specify a song you want to play", timeout=3.0)
+            else:
+                self.app.pop_screen()
 class ControlsWidget(Static):
     def compose(self):
         yield Button("Pause", variant="primary", id="pause")
@@ -137,6 +150,7 @@ class NiftyhoGramofonUI(App):
         ("r", "pause_audio", "Pause Audio"),
         ("s", "stop_audio", "Stop Audio"),
         ("t", "unpause_audio", "Unpause Audio"),
+        ("w", "open_settings", "Settings"),
     ]
     COMMANDS = App.COMMANDS | {Playsound} | {PlaySong} | {RefreshMusic}
     MODES = {
@@ -179,6 +193,8 @@ class NiftyhoGramofonUI(App):
         self.dark = not self.dark
     def action_play_popscreen(self) -> None:
         self.push_screen(PlayScreen())
+    def action_open_settings(self) -> None:
+        self.push_screen(SettingsScreen())
     def action_stop_audio(self):
         config = Config(os.path.abspath("config.json"))
         try:
